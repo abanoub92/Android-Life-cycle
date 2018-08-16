@@ -6,7 +6,16 @@ import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
 
+import java.util.ArrayList;
+
 public class MainActivity extends AppCompatActivity {
+
+    /*
+     * This constant String will be used to store the content of the TextView used to display the
+     * list of callbacks. The reason we are storing the contents of the TextView is so that you can
+     * see the entire set of callbacks as they are called.
+     */
+    private static final String LIFECYCLE_CALLBACKS_TEXT_KEY = "lifecycle";
 
     /*
      * This TAG_LOG will be used for logging. It is best practice to use the class's name using
@@ -32,6 +41,14 @@ public class MainActivity extends AppCompatActivity {
      */
     private TextView mLifecycleDisplay;
 
+    /*
+     * This ArrayList will keep track of lifecycle callbacks that occur after we are able to save
+     * them. Since, as we've observed, the contents of the TextView are saved in onSaveInstanceState
+     * BEFORE onStop and onDestroy are called, we must track when onStop and onDestroy are called,
+     * and then update the UI in onStart when the Activity is back on the screen.
+     */
+    private static ArrayList<String> mLifecycleCallbacks = new ArrayList<>();
+
     /**
      * Called when the activity is first created. This is where you should do all of your normal
      * static set up: create views, bind data to lists, etc.
@@ -46,6 +63,39 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         mLifecycleDisplay = findViewById(R.id.tv_lifecycle_display);
+
+        /*
+         * If savedInstanceState is not null, that means our Activity is not being started for the
+         * first time. Even if the savedInstanceState is not null, it is smart to check if the
+         * bundle contains the key we are looking for. In our case, the key we are looking for maps
+         * to the contents of the TextView that displays our list of callbacks. If the bundle
+         * contains that key, we set the contents of the TextView accordingly.
+         */
+        if (savedInstanceState != null){
+            String saveState = savedInstanceState.getString(LIFECYCLE_CALLBACKS_TEXT_KEY);
+            mLifecycleDisplay.setText(saveState);
+        }
+
+        /*
+         * Since any updates to the UI we make after onSaveInstanceState (onStop, onDestroy, etc),
+         * we use an ArrayList to track if these lifecycle events had occurred. If any of them have
+         * occurred, we append their respective name to the TextView.
+         *
+         * The reason we iterate starting from the back of the ArrayList and ending in the front
+         * is that the most recent callbacks are inserted into the front of the ArrayList, so
+         * naturally the older callbacks are stored further back. We could have used a Queue to do
+         * this, but Java has strange API names for the Queue interface that we thought might be
+         * more confusing than this ArrayList solution.
+         */
+        for (int i = mLifecycleCallbacks.size() - 1; i >= 0; i--){
+            mLifecycleDisplay.append(mLifecycleCallbacks.get(i) + "\n");
+        }
+
+        /*
+         * Once we've appended each callback from the ArrayList to the TextView, we need to clean
+         * the ArrayList so we don't get duplicate entries in the TextView.
+         */
+        mLifecycleCallbacks.clear();
 
         logAndAppend(ON_CREATE);
     }
@@ -101,6 +151,8 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onStop() {
         super.onStop();
+
+        mLifecycleCallbacks.add(0, ON_STOP);
         logAndAppend(ON_STOP);
     }
 
@@ -124,6 +176,8 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+
+        mLifecycleCallbacks.add(0, ON_DESTROY);
         logAndAppend(ON_DESTROY);
     }
 
@@ -147,5 +201,15 @@ public class MainActivity extends AppCompatActivity {
      */
     public void resetLifecycleDisplay(View view){
         mLifecycleDisplay.setText("Lifecycle callbacks:\n");
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+
+        logAndAppend(ON_SAVE_INSTANCE_STATE);
+
+        String text = mLifecycleDisplay.getText().toString();
+        outState.putString(LIFECYCLE_CALLBACKS_TEXT_KEY, text);
     }
 }
