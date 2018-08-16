@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Android_Life-cycle</string>
+
+    <!--  -->
+    <!-- string text for reset button -->
+    <string name="button_reset">Reset Log</string>
+</resources>
